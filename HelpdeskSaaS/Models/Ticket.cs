@@ -23,7 +23,8 @@ namespace HelpdeskSaaS.Models
         public User? AssignedAgent { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
-
+        public int TenantId { get; set; }
+        public Tenant? Tenant { get; set; }
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
         public ICollection<TicketStatusHistory> StatusHistories { get; set; } = new List<TicketStatusHistory>();
 

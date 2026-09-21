@@ -102,7 +102,7 @@ namespace HelpdeskSaaS.Data
                 entity.HasOne(t => t.CreatedByUser)
                     .WithMany(u => u.CreatedTickets)
                     .HasForeignKey(t => t.CreatedByUserId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .OnDelete(DeleteBehavior.Cascade);
 
 
                 // User 1 ----> Many Assigned Tickets
@@ -112,6 +112,10 @@ namespace HelpdeskSaaS.Data
                     .HasForeignKey(t => t.AssignedAgentId)
                     .OnDelete(DeleteBehavior.SetNull);
 
+                entity.HasOne(t => t.Tenant)
+                    .WithMany(t => t.Tickets)
+                    .HasForeignKey(t => t.TenantId)
+                    .OnDelete(DeleteBehavior.Restrict);
 
             });
 
