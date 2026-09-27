@@ -30,7 +30,7 @@ namespace HelpdeskSaaS.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> GetAllTicketsForAdmin()
         {
-            // Get current admin ID from JWT
+          
             var userClaim = User.FindFirst(ClaimTypes.NameIdentifier);
 
             if (userClaim == null)
@@ -39,14 +39,14 @@ namespace HelpdeskSaaS.Controllers
             if (!int.TryParse(userClaim.Value, out int adminId))
                 return Unauthorized("Invalid user information.");
 
-            // Get current admin
+          
             var currentAdmin = await _context.Users
                 .FirstOrDefaultAsync(u => u.UserId == adminId);
 
             if (currentAdmin == null)
                 return Unauthorized("Admin not found.");
 
-            // Get all tickets from admin's tenant
+        
             var tickets = await _context.Tickets
                 .AsNoTracking()
                 .Where(t => t.TenantId == currentAdmin.TenantId)
@@ -98,25 +98,39 @@ namespace HelpdeskSaaS.Controllers
             if (!int.TryParse(userClaim.Value, out int userId))
                 return Unauthorized("Invalid user information.");
 
-
             var currentUser = await _context.Users
                 .FirstOrDefaultAsync(u => u.UserId == userId);
 
             if (currentUser == null)
                 return Unauthorized("User not found.");
 
-
             var query = _context.Tickets
                 .AsNoTracking()
                 .Include(t => t.CreatedByUser)
                 .Include(t => t.AssignedAgent)
-                .Where(t => t.CreatedByUser!.TenantId == currentUser.TenantId);
+                .Where(t => t.TenantId == currentUser.TenantId);
 
+
+     
 
             if (currentUser.Role == UserRole.Customer)
             {
-                query = query.Where(t => t.CreatedByUserId == currentUser.UserId);
+                query = query.Where(t =>
+                    t.CreatedByUserId == currentUser.UserId);
             }
+
+
+           
+
+            else if (currentUser.Role == UserRole.Agent)
+            {
+                query = query.Where(t =>
+                    t.AssignedAgentId == currentUser.UserId);
+            }
+
+
+           
+
 
             var tickets = await query
                 .Select(t => new
@@ -124,26 +138,37 @@ namespace HelpdeskSaaS.Controllers
                     t.TicketId,
                     t.TicketTitle,
                     t.Description,
+
                     Status = t.Status.ToString(),
+
                     Priority = t.Priority.ToString(),
+
                     t.Category,
 
                     CreatedByUserId = t.CreatedByUserId,
-                    CreatedByUserName = t.CreatedByUser != null
-                        ? t.CreatedByUser.UserName
-                        : null,
-                    CreatedByUserEmail = t.CreatedByUser != null
-    ? t.CreatedByUser.Email
-    : null,
+
+                    CreatedByUserName =
+                        t.CreatedByUser != null
+                            ? t.CreatedByUser.UserName
+                            : null,
+
+                    CreatedByUserEmail =
+                        t.CreatedByUser != null
+                            ? t.CreatedByUser.Email
+                            : null,
+
                     AssignedAgentId = t.AssignedAgentId,
-                    AssignedAgentName = t.AssignedAgent != null
-                        ? t.AssignedAgent.UserName
-                        : null,
+
+                    AssignedAgentName =
+                        t.AssignedAgent != null
+                            ? t.AssignedAgent.UserName
+                            : null,
 
                     t.CreatedAt,
                     t.UpdatedAt
                 })
                 .ToListAsync();
+
 
             return Ok(tickets);
         }
@@ -261,24 +286,22 @@ namespace HelpdeskSaaS.Controllers
 
             await _context.SaveChangesAsync();
 
-
+        
             var notificationUserIds = await _context.Users
                 .Where(u =>
                     u.TenantId == user.TenantId &&
-                    (u.Role == Enums.UserRole.Admin ||
-                     u.Role == Enums.UserRole.Agent) &&
+                    u.Role == Enums.UserRole.Admin &&
                     u.UserId != userId)
                 .Select(u => u.UserId)
                 .ToListAsync();
-
 
             if (notificationUserIds.Any())
             {
                 await _notificationService.SendToUsersAsync(
                     notificationUserIds,
-                    $"New ticket created: {ticket.TicketTitle}");
+                    $"New ticket created: {ticket.TicketTitle}"
+                );
             }
-
 
             return Ok("Ticket created successfully.");
         }
@@ -330,7 +353,7 @@ namespace HelpdeskSaaS.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Send notification to assigned agent
+         
             await _notificationService.SendToUserAsync(
                 agent.UserId,
                 $"Ticket \"{ticket.TicketTitle}\" has been assigned to you.");
@@ -417,21 +440,21 @@ namespace HelpdeskSaaS.Controllers
 
             if (ticket == null)
                 return NotFound("Ticket not found.");
-            // Customer can update only his own ticket
+           
             if (currentUser.Role == UserRole.Customer &&
                 ticket.CreatedByUserId != currentUser.UserId)
             {
                 return Forbid();
             }
 
-            // Agent can update only ticket assigned to him
+           
             if (currentUser.Role == UserRole.Agent &&
                 ticket.AssignedAgentId != currentUser.UserId)
             {
                 return Forbid();
             }
 
-            // Admin can update any ticket in his tenant
+      
 
             if (ticket.Status == dto.Status)
                 return BadRequest("Ticket is already in this status.");
@@ -456,24 +479,76 @@ namespace HelpdeskSaaS.Controllers
 
             var notificationUserIds = new List<int>();
 
-     
-            if (ticket.CreatedByUserId != currentUser.UserId)
+        
+            if (currentUser.Role == UserRole.Customer)
             {
-                notificationUserIds.Add(ticket.CreatedByUserId);
+             
+                if (ticket.AssignedAgentId.HasValue)
+                {
+                    notificationUserIds.Add(
+                        ticket.AssignedAgentId.Value
+                    );
+                }
+
+                var adminIds = await _context.Users
+                    .Where(u =>
+                        u.TenantId == currentUser.TenantId &&
+                        u.Role == UserRole.Admin &&
+                        u.UserId != currentUser.UserId)
+                    .Select(u => u.UserId)
+                    .ToListAsync();
+
+                notificationUserIds.AddRange(adminIds);
             }
 
-            if (ticket.AssignedAgentId.HasValue &&
-                ticket.AssignedAgentId.Value != currentUser.UserId)
+
+            else if (currentUser.Role == UserRole.Agent)
             {
-                notificationUserIds.Add(ticket.AssignedAgentId.Value);
+             
+                if (ticket.CreatedByUserId != currentUser.UserId)
+                {
+                    notificationUserIds.Add(
+                        ticket.CreatedByUserId
+                    );
+                }
+
+                var adminIds = await _context.Users
+                    .Where(u =>
+                        u.TenantId == currentUser.TenantId &&
+                        u.Role == UserRole.Admin &&
+                        u.UserId != currentUser.UserId)
+                    .Select(u => u.UserId)
+                    .ToListAsync();
+
+                notificationUserIds.AddRange(adminIds);
             }
 
-         
+
+            else if (currentUser.Role == UserRole.Admin)
+            {
+              
+                if (ticket.CreatedByUserId != currentUser.UserId)
+                {
+                    notificationUserIds.Add(
+                        ticket.CreatedByUserId
+                    );
+                }
+
+                if (ticket.AssignedAgentId.HasValue)
+                {
+                    notificationUserIds.Add(
+                        ticket.AssignedAgentId.Value
+                    );
+                }
+            }
+
+
             if (notificationUserIds.Any())
             {
                 await _notificationService.SendToUsersAsync(
-                    notificationUserIds,
-                    $"Ticket \"{ticket.TicketTitle}\" status changed from {oldStatus} to {dto.Status}.");
+                    notificationUserIds.Distinct().ToList(),
+                    $"Ticket \"{ticket.TicketTitle}\" status changed from {oldStatus} to {dto.Status}."
+                );
             }
 
             return Ok("Ticket status updated successfully.");
@@ -536,29 +611,72 @@ namespace HelpdeskSaaS.Controllers
 
             var notificationUserIds = new List<int>();
 
+           
             if (currentUser.Role == UserRole.Customer)
             {
-                if (ticket.AssignedAgentId.HasValue)
+           
+                if (ticket.AssignedAgentId.HasValue &&
+                    ticket.AssignedAgentId.Value != currentUser.UserId)
+                {
+                    notificationUserIds.Add(ticket.AssignedAgentId.Value);
+                }
+
+             
+                var adminIds = await _context.Users
+                    .Where(u =>
+                        u.TenantId == currentUser.TenantId &&
+                        u.Role == UserRole.Admin &&
+                        u.UserId != currentUser.UserId)
+                    .Select(u => u.UserId)
+                    .ToListAsync();
+
+                notificationUserIds.AddRange(adminIds);
+            }
+
+           
+            else if (currentUser.Role == UserRole.Agent)
+            {
+          
+                if (ticket.CreatedByUserId != currentUser.UserId)
+                {
+                    notificationUserIds.Add(ticket.CreatedByUserId);
+                }
+
+                
+                var adminIds = await _context.Users
+                    .Where(u =>
+                        u.TenantId == currentUser.TenantId &&
+                        u.Role == UserRole.Admin &&
+                        u.UserId != currentUser.UserId)
+                    .Select(u => u.UserId)
+                    .ToListAsync();
+
+                notificationUserIds.AddRange(adminIds);
+            }
+
+            
+            else if (currentUser.Role == UserRole.Admin)
+            {
+               
+                if (ticket.CreatedByUserId != currentUser.UserId)
+                {
+                    notificationUserIds.Add(ticket.CreatedByUserId);
+                }
+
+               
+                if (ticket.AssignedAgentId.HasValue &&
+                    ticket.AssignedAgentId.Value != currentUser.UserId)
                 {
                     notificationUserIds.Add(ticket.AssignedAgentId.Value);
                 }
             }
 
-          
-            if (currentUser.Role == UserRole.Agent)
-            {
-                if (ticket.CreatedByUserId != currentUser.UserId)
-                {
-                    notificationUserIds.Add(ticket.CreatedByUserId);
-                }
-            }
-
-          
             if (notificationUserIds.Any())
             {
                 await _notificationService.SendToUsersAsync(
-                    notificationUserIds,
-                    $"New comment added to ticket \"{ticket.TicketTitle}\".");
+                    notificationUserIds.Distinct().ToList(),
+                    $"New comment added to ticket \"{ticket.TicketTitle}\"."
+                );
             }
 
             return Ok(new
@@ -630,7 +748,7 @@ namespace HelpdeskSaaS.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteTicket(int id)
         {
-            // Get current admin ID from JWT
+           
             var userClaim = User.FindFirst(ClaimTypes.NameIdentifier);
 
             if (userClaim == null)
@@ -639,14 +757,14 @@ namespace HelpdeskSaaS.Controllers
             if (!int.TryParse(userClaim.Value, out int adminId))
                 return Unauthorized("Invalid user information.");
 
-            // Get current admin
+         
             var currentAdmin = await _context.Users
                 .FirstOrDefaultAsync(u => u.UserId == adminId);
 
             if (currentAdmin == null)
                 return Unauthorized("Admin not found.");
 
-            // Get ticket from admin's tenant
+          
             var ticket = await _context.Tickets
                 .FirstOrDefaultAsync(t =>
                     t.TicketId == id &&

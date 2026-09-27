@@ -8,28 +8,28 @@ namespace HelpdeskSaaS.Hubs
     {
         public override async Task OnConnectedAsync()
         {
-            var userId = Context.UserIdentifier;
+            Console.WriteLine("====================================");
+            Console.WriteLine("🔥🔥🔥 NOTIFICATION HUB CONNECTED 🔥🔥🔥");
+            Console.WriteLine($"ConnectionId: {Context.ConnectionId}");
+            Console.WriteLine($"UserIdentifier: {Context.UserIdentifier}");
 
-            if (!string.IsNullOrEmpty(userId))
-            {
-                await Groups.AddToGroupAsync(
-                    Context.ConnectionId,
-                    $"User_{userId}");
-            }
+            var nameIdentifier = Context.User?.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier
+            )?.Value;
+
+            Console.WriteLine($"NameIdentifier Claim: {nameIdentifier}");
+            Console.WriteLine("====================================");
 
             await base.OnConnectedAsync();
         }
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            var userId = Context.UserIdentifier;
-
-            if (!string.IsNullOrEmpty(userId))
-            {
-                await Groups.RemoveFromGroupAsync(
-                    Context.ConnectionId,
-                    $"User_{userId}");
-            }
+            Console.WriteLine("====================================");
+            Console.WriteLine("🔴 NOTIFICATION HUB DISCONNECTED");
+            Console.WriteLine($"ConnectionId: {Context.ConnectionId}");
+            Console.WriteLine($"UserIdentifier: {Context.UserIdentifier}");
+            Console.WriteLine("====================================");
 
             await base.OnDisconnectedAsync(exception);
         }

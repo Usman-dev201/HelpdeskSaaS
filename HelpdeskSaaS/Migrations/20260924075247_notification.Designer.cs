@@ -4,6 +4,7 @@ using HelpdeskSaaS.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HelpdeskSaaS.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924075247_notification")]
+    partial class notification
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -75,7 +78,7 @@ namespace HelpdeskSaaS.Migrations
 
                     b.HasKey("NotificationId");
 
-                    b.HasIndex("UserId", "IsRead", "CreatedAt");
+                    b.HasIndex("UserId");
 
                     b.ToTable("Notifications");
                 });
@@ -182,7 +185,7 @@ namespace HelpdeskSaaS.Migrations
 
                     b.HasIndex("ChangedByUserId");
 
-                    b.HasIndex("TicketId", "ChangedAt");
+                    b.HasIndex("TicketId");
 
                     b.ToTable("TicketStatusHistories");
                 });
@@ -216,9 +219,6 @@ namespace HelpdeskSaaS.Migrations
                         .HasColumnType("nvarchar(150)");
 
                     b.HasKey("UserId");
-
-                    b.HasIndex("Email")
-                        .IsUnique();
 
                     b.HasIndex("TenantId");
 

@@ -11,12 +11,13 @@ namespace HelpdeskSaaS.Data
         {
         }
 
-        // Tables
+      
         public DbSet<Tenant> Tenants { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Ticket> Tickets { get; set; }
         public DbSet<Comment> Comments { get; set; }
         public DbSet<TicketStatusHistory> TicketStatusHistories { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -24,10 +25,7 @@ namespace HelpdeskSaaS.Data
             base.OnModelCreating(modelBuilder);
 
 
-            // =====================================================
-            // TENANT
-            // =====================================================
-
+           
             modelBuilder.Entity<Tenant>(entity =>
             {
                 entity.HasKey(t => t.TenantId);
@@ -41,10 +39,7 @@ namespace HelpdeskSaaS.Data
             });
 
 
-            // =====================================================
-            // USER
-            // =====================================================
-
+        
             modelBuilder.Entity<User>(entity =>
             {
                 entity.HasKey(u => u.UserId);
@@ -64,18 +59,29 @@ namespace HelpdeskSaaS.Data
                     .IsRequired();
 
 
-                // Tenant 1 ----> Many Users
+               
                 entity.HasOne(u => u.Tenant)
                     .WithMany(t => t.Users)
                     .HasForeignKey(u => u.TenantId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
-
-            // =====================================================
-            // TICKET
-            // =====================================================
-
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.HasKey(n => n.NotificationId);
+                entity.Property(n => n.Message)
+                    .IsRequired();
+                entity.Property(n => n.IsRead)
+                    .IsRequired();
+                entity.Property(n => n.CreatedAt)
+                    .IsRequired();
+               
+                entity.HasOne(n => n.User)
+                    .WithMany(u => u.Notifications)
+                    .HasForeignKey(n => n.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+           
             modelBuilder.Entity<Ticket>(entity =>
             {
                 entity.HasKey(t => t.TicketId);
@@ -97,15 +103,13 @@ namespace HelpdeskSaaS.Data
                     .IsRequired()
                     .HasMaxLength(100);
 
-
-                // User 1 ----> Many Created Tickets
                 entity.HasOne(t => t.CreatedByUser)
                     .WithMany(u => u.CreatedTickets)
                     .HasForeignKey(t => t.CreatedByUserId)
                     .OnDelete(DeleteBehavior.Cascade);
 
 
-                // User 1 ----> Many Assigned Tickets
+              
               
                 entity.HasOne(t => t.AssignedAgent)
                     .WithMany(u => u.AssignedTickets)
@@ -120,10 +124,7 @@ namespace HelpdeskSaaS.Data
             });
 
 
-            // =====================================================
-            // COMMENT
-            // =====================================================
-
+          
             modelBuilder.Entity<Comment>(entity =>
             {
                 entity.HasKey(c => c.CommentId);
@@ -135,7 +136,7 @@ namespace HelpdeskSaaS.Data
                     .IsRequired();
 
 
-                // Ticket 1 ----> Many Comments
+                
                 entity.HasOne(c => c.Ticket)
                     .WithMany(t => t.Comments)
                     .HasForeignKey(c => c.TicketId)
@@ -148,10 +149,7 @@ namespace HelpdeskSaaS.Data
                      });
 
 
-            // =====================================================
-            // TICKET STATUS HISTORY
-            // =====================================================
-
+          
             modelBuilder.Entity<TicketStatusHistory>(entity =>
             {
                 entity.HasKey(h => h.HistoryId);
@@ -166,19 +164,52 @@ namespace HelpdeskSaaS.Data
                     .IsRequired();
 
 
-                // Ticket 1 ----> Many Status History Records
+                
                 entity.HasOne(h => h.Ticket)
                     .WithMany(t => t.StatusHistories)
                     .HasForeignKey(h => h.TicketId)
                     .OnDelete(DeleteBehavior.Cascade);
 
-
-                // User 1 ----> Many Status History Records
                 entity.HasOne(h => h.ChangedByUser)
                     .WithMany(u => u.StatusChanges)
                     .HasForeignKey(h => h.ChangedByUserId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
+
+         
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.TenantId);
+
+            modelBuilder.Entity<Ticket>()
+                .HasIndex(t => t.TenantId);
+
+            modelBuilder.Entity<Ticket>()
+                .HasIndex(t => t.CreatedByUserId);
+
+            modelBuilder.Entity<Ticket>()
+                .HasIndex(t => t.AssignedAgentId);
+
+            modelBuilder.Entity<Comment>()
+                .HasIndex(c => c.TicketId);
+
+            modelBuilder.Entity<TicketStatusHistory>()
+                .HasIndex(h => new
+                {
+                    h.TicketId,
+                    h.ChangedAt
+                });
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => new
+                {
+                    n.UserId,
+                    n.IsRead,
+                    n.CreatedAt
+                });
         }
     }
 }

@@ -1,6 +1,8 @@
 using HelpdeskSaaS.Data;
+using HelpdeskSaaS.Helpers;
 using HelpdeskSaaS.Hubs;
 using HelpdeskSaaS.Services;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -13,6 +15,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<PasswordService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
 
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
@@ -115,7 +118,6 @@ app.UseStaticFiles();
 app.UseCors("ReactFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 app.MapHub<NotificationHub>("/notificationHub");
 app.Run();

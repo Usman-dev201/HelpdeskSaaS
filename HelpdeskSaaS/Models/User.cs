@@ -25,5 +25,6 @@ namespace HelpdeskSaaS.Models
         public ICollection<TicketStatusHistory> StatusChanges { get; set; } = new List<TicketStatusHistory>();
 
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+        public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     }
 }

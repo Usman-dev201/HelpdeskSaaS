@@ -13,13 +13,13 @@ namespace HelpdeskSaaS.Models
         public DateTime ChangedAt { get; set; } = DateTime.UtcNow;
 
 
-        // Ticket relationship
+       
         public int TicketId { get; set; }
 
         public Ticket Ticket { get; set; } = null!;
 
 
-        // User who changed status
+     
         public int ChangedByUserId { get; set; }
 
         public User ChangedByUser { get; set; } = null!;
