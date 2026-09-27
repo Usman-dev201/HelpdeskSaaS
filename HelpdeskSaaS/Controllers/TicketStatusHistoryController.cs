@@ -21,17 +21,12 @@ namespace HelpdeskSaaS.Controllers
         }
 
 
-        // =====================================================
-        // GET STATUS HISTORY BY TICKET
-        // =====================================================
 
         [HttpGet("ticket/{ticketId}")]
         public async Task<IActionResult> GetTicketHistory(
             int ticketId)
         {
-            // =================================================
-            // GET CURRENT USER ID FROM JWT
-            // =================================================
+           
 
             var userIdClaim =
                 User.FindFirst(
@@ -46,9 +41,6 @@ namespace HelpdeskSaaS.Controllers
             }
 
 
-            // =================================================
-            // GET CURRENT USER
-            // =================================================
 
             var currentUser =
                 await _context.Users
@@ -63,9 +55,7 @@ namespace HelpdeskSaaS.Controllers
             }
 
 
-            // =================================================
-            // GET TICKET
-            // =================================================
+         
 
             var ticket =
                 await _context.Tickets
@@ -82,9 +72,6 @@ namespace HelpdeskSaaS.Controllers
             }
 
 
-            // =================================================
-            // TENANT SECURITY
-            // =================================================
 
             if (ticket.TenantId != currentUser.TenantId)
             {
@@ -92,12 +79,7 @@ namespace HelpdeskSaaS.Controllers
             }
 
 
-            // =================================================
-            // CUSTOMER SECURITY
-            // =================================================
-
-            // Customer can only see history
-            // of tickets created by themselves.
+        
 
             if (
                 currentUser.Role ==
@@ -110,12 +92,6 @@ namespace HelpdeskSaaS.Controllers
             }
 
 
-            // =================================================
-            // AGENT SECURITY
-            // =================================================
-
-            // Agent can only see history
-            // of tickets assigned to themselves.
 
             if (
                 currentUser.Role ==
@@ -128,10 +104,7 @@ namespace HelpdeskSaaS.Controllers
             }
 
 
-            // =================================================
-            // GET STATUS HISTORY
-            // =================================================
-
+       
             var history =
                 await _context.TicketStatusHistories
                     .AsNoTracking()
@@ -164,9 +137,6 @@ namespace HelpdeskSaaS.Controllers
                     .ToListAsync();
 
 
-            // =================================================
-            // RETURN RESPONSE
-            // =================================================
 
             return Ok(history);
         }
